@@ -39,7 +39,6 @@ impl DirNode {
     }
 
     fn print_self_and_children(&self, indent_level: usize, is_last: Vec<bool>, self_is_last: bool) {
-        let start = if indent_level == 0 { "" } else { "│" };
         let mut indent = String::from("");
         let mut next_is_last = is_last.clone();
         next_is_last.push(self_is_last);
@@ -61,9 +60,8 @@ impl DirNode {
 
         let seperator = if *next_is_last.last().unwrap() { "└─" } else { "├─" };
 
-        println!("{}{}{}{}", start, indent, seperator, self.name);
+        println!("{}{}{}", indent, seperator, self.name);
 
-        drop(start);
         drop(indent);
         drop(seperator);
         
