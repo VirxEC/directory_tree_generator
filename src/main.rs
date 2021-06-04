@@ -38,9 +38,11 @@ impl DirNode {
         root
     }
 
-    fn print_self_and_children(&self, indent_level: usize, is_last: Vec<bool>) {
+    fn print_self_and_children(&self, indent_level: usize, is_last: Vec<bool>, self_is_last: bool) {
         let start = if indent_level == 0 { "" } else { "│" };
         let mut indent = String::from("");
+        let mut next_is_last = is_last.clone();
+        next_is_last.push(self_is_last);
 
         if indent_level != 0 {
             let mut i = 0;
@@ -57,7 +59,7 @@ impl DirNode {
             }
         }
 
-        let seperator = if *is_last.last().unwrap() { "└─" } else { "├─" };
+        let seperator = if *next_is_last.last().unwrap() { "└─" } else { "├─" };
 
         println!("{}{}{}{}", start, indent, seperator, self.name);
 
@@ -67,15 +69,9 @@ impl DirNode {
         
         let next_indent_level = indent_level + 1;
         let num_children = self.children.len();
-        let mut next_is_last = is_last.clone();
-        next_is_last.push(false);
 
-        for (i, child) in self.children.iter().enumerate() {
-            if i == num_children - 1 {
-                next_is_last.pop();
-                next_is_last.push(true);
-            }
-            child.print_self_and_children(next_indent_level, next_is_last.clone());
+        for i in 0..num_children {
+            self.children[i].print_self_and_children(next_indent_level, next_is_last.clone(), i == num_children - 1);
         }
     }
 }
@@ -106,6 +102,5 @@ fn main() {
     }
 
     let root = DirNode::from(&start_directory);
-    // dbg!(root);
-    root.print_self_and_children(0, vec![true]);
+    root.print_self_and_children(0, Vec::new(), true);
 }
