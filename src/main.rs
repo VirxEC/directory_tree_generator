@@ -92,8 +92,8 @@ fn main() {
             trim_dir = "./";
         }
 
-        println!("{}", trim_dir.clone());
-        start_directory = PathBuf::from(trim_dir.clone());
+        println!("{}", trim_dir);
+        start_directory = PathBuf::from(trim_dir);
         if start_directory.is_dir() {
             break;
         } else {
