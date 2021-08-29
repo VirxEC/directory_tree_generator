@@ -86,16 +86,18 @@ fn main() {
         let mut dir = String::new();
         io::stdin().read_line(&mut dir).unwrap();
         dir = dir.replace("\n", "");
+        let mut trim_dir = dir.trim();
 
-        if dir.trim().is_empty() {
-            dir = String::from("./");
+        if trim_dir.is_empty() {
+            trim_dir = "./";
         }
 
-        start_directory = PathBuf::from(&dir);
+        println!("{}", trim_dir.clone());
+        start_directory = PathBuf::from(trim_dir.clone());
         if start_directory.is_dir() {
             break;
         } else {
-            println!("{} is an invalid directory", &dir);
+            println!("{} is an invalid directory", trim_dir);
         }
     }
 
