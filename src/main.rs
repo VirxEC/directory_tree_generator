@@ -1,47 +1,34 @@
-use std::io::{self, Write};
-use std::path::PathBuf;
-use std::{env, fs};
+use std::{
+    env, fs,
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug)]
 struct DirNode {
     children: Vec<DirNode>,
-    path: PathBuf,
-    name: String
-}
-
-impl Default for DirNode {
-    fn default() -> Self {
-        Self {
-            children: Vec::new(),
-            path: PathBuf::new(),
-            name: String::from("")
-        }
-    }
+    name: String,
 }
 
 impl DirNode {
-    fn from(dir_name: &PathBuf) -> Self {
-        let mut root = DirNode::default();
-        root.path = fs::canonicalize(&dir_name).unwrap();
-        root.name = match dir_name.file_name() {
-            Some(name) => String::from(name.to_str().unwrap()),
-            None => String::from("root")
+    fn from_dir<T: AsRef<Path>>(dir_name: T) -> io::Result<Self> {
+        let path = fs::canonicalize(&dir_name)?;
+        let name = match dir_name.as_ref().file_name() {
+            Some(name) => name.to_string_lossy().to_string(),
+            None => String::from("root"),
         };
 
-        if root.path.is_dir() {
-            for entry in fs::read_dir(dir_name).unwrap() {
-                let path = entry.unwrap().path();
-                root.children.push(Self::from(&path));
-            }
-        }
+        let children = if path.is_dir() {
+            fs::read_dir(dir_name)?.flatten().filter_map(|entry| Self::from_dir(entry.path()).ok()).collect()
+        } else {
+            Vec::new()
+        };
 
-        root
+        Ok(Self { children, name })
     }
 
-    fn print_self_and_children(&self, indent_level: usize, is_last: Vec<bool>, self_is_last: bool) {
-        let mut indent = String::from("");
-        let mut next_is_last = is_last.clone();
-        next_is_last.push(self_is_last);
+    fn print_self_and_children(&self, indent_level: usize, mut is_last: Vec<bool>, self_is_last: bool) {
+        let mut indent = String::new();
 
         if indent_level != 0 {
             let mut i = 0;
@@ -51,56 +38,53 @@ impl DirNode {
                     break;
                 }
 
-                indent.push_str(if is_last[i] { " " } else { "|" });
-                indent.push_str(" ");
+                indent.push(if is_last[i] { ' ' } else { '|' });
+                indent.push(' ');
 
                 i += 1;
             }
         }
 
-        let seperator = if *next_is_last.last().unwrap() { "└─" } else { "├─" };
+        let seperator = if self_is_last { "└─" } else { "├─" };
+        is_last.push(self_is_last);
 
-        println!("{}{}{}", indent, seperator, self.name);
+        println!("{indent}{seperator}{}", self.name);
 
-        drop(indent);
-        drop(seperator);
-        
-        let next_indent_level = indent_level + 1;
-        let num_children = self.children.len();
-
-        for i in 0..num_children {
-            self.children[i].print_self_and_children(next_indent_level, next_is_last.clone(), i == num_children - 1);
+        for (i, child) in self.children.iter().enumerate() {
+            child.print_self_and_children(indent_level + 1, is_last.clone(), i == self.children.len() - 1);
         }
     }
 }
 
-fn main() {
-    println!("Current directory: {}", env::current_dir().unwrap().into_os_string().into_string().unwrap());
+fn main() -> io::Result<()> {
+    println!("Current directory: {}", env::current_dir()?.to_string_lossy());
 
     let mut start_directory;
 
     loop {
         print!("Starting directory: ");
-        io::stdout().flush().unwrap();
-        
+        io::stdout().flush()?;
+
         let mut dir = String::new();
-        io::stdin().read_line(&mut dir).unwrap();
-        dir = dir.replace("\n", "");
+        io::stdin().read_line(&mut dir)?;
+        dir = dir.replace('\n', "");
         let mut trim_dir = dir.trim();
 
         if trim_dir.is_empty() {
             trim_dir = "./";
         }
 
-        println!("{}", trim_dir);
+        println!("{trim_dir}");
         start_directory = PathBuf::from(trim_dir);
         if start_directory.is_dir() {
             break;
         } else {
-            println!("{} is an invalid directory", trim_dir);
+            println!("{trim_dir} is an invalid directory");
         }
     }
 
-    let root = DirNode::from(&start_directory);
+    let root = DirNode::from_dir(&start_directory)?;
     root.print_self_and_children(0, Vec::new(), true);
+
+    Ok(())
 }
